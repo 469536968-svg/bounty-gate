@@ -1,98 +1,55 @@
 # bounty-gate
 
-**An occupancy-aware bounty scanner.** Most scanners answer *"is there money here?"*
-This one answers the question that actually decides whether you get paid:
+**Sort bounties by occupancy and rails — not by dollar amount.**
 
-> **"Is this position already taken, and is there a payment rail at all?"**
+Most bounty tooling scrapes GitHub for `label:"bounty"` and sorts by reward.
+That optimises the wrong variable. Two things actually decide whether you get
+paid, and both are usually zero:
 
-## Why
-
-I spent a lot of compute discovering that public `label:"bounty"` issues are mostly
-a trap. Before writing a single line of code, three checks kill ~90% of candidates:
-
-| Check | Signal | Why it kills the candidate |
-|---|---|---|
-| **Occupied** | an open PR already references the issue | your PR gets closed as a duplicate |
-| **Self-dealt** | issue author == PR author | the author is farming their own bounty |
-| **No rail** | no Algora / IssueHunt / Polar / Bountysource link | "proposed, $X" with no escrow = probably unpaid |
-
-A merged PR does **not** imply payment. The payment rail is the real bottleneck.
-
-## Sample output (real run)
+1. **Occupancy** — an open PR already covers the issue. Yours gets closed as a duplicate.
+2. **Rails** — there is no escrow platform, so the dollar figure is unenforced prose.
 
 ```
-candidates: 10  |  unoccupied: 0
-
-* 55.0 zhangjiayang6835-cyber/bounty-plaza#1589 $3000 aged 4d [OCCUPIED(1), NO-RAIL]
-* 55.0 zhangjiayang6835-cyber/bounty-plaza#1596 $1500 aged 3d [OCCUPIED(1), NO-RAIL]
-* 10.0 zhangjiayang6835-cyber/bounty-plaza#1584 $1500 aged 4d [OCCUPIED(2), NO-RAIL]
-* -35.0 tenstorrent/tt-metal#56908                $3000 aged 4d [OCCUPIED(3), NO-RAIL]
-* -210.0 zhangjiayang6835-cyber/bounty-plaza#1560  $100 aged 5d [OCCUPIED(6), NO-RAIL]
-```
-
-**Zero unoccupied.** That is the honest state of this channel: the visible bounty
-label space is dominated by a handful of accounts posting junk issues and racing
-their own PRs at them. Knowing that in seconds is worth more than any list of links.
-
-## The one-question tool: `vet.py`
-
-`scan.py` surveys a whole channel. `vet.py` judges **one** issue before you spend
-compute writing code for it.
-
-```bash
-python3 vet.py https://github.com/OWNER/REPO/issues/123
-```
-
-```
+$ python3 vet.py BasedHardware/omi#15125
 OCCUPIED  https://github.com/BasedHardware/omi/issues/15125
-  memories -> CSV, conversations -> SQLite  ($50)
-  score=-41.0  amount=$50  rails=none  open_prs=1
-  - OCCUPIED by 1 open PR(s): alice
-  - SELF-DEALT: issue author 'alice' also authored a competing PR
+  score=-35.0  amount=$50  rails=none  open_prs=2
+  - OCCUPIED by 2 open PR(s): ...
+  - SELF-DEALT: issue author also authored a competing PR
   - NO-RAIL: no escrow platform linked; amount is unenforced prose
 
   -> do NOT write code for this. The position is not open.
 ```
 
-Four verdicts: **VIABLE / OCCUPIED / SELF-DEALT / NO-RAIL**.
-Exit code 0 only for VIABLE, so it composes into a shell loop.
+Exit code is `0` only when a bounty is **VIABLE**, so it drops straight into a
+loop: `while read b; do python3 vet.py "$b" && work_on "$b"; done`
 
-Offline logic is covered by `test_vet.py` (no network, stdlib `unittest`):
+## Files
 
-```bash
-python3 test_vet.py
-```
+| file | purpose |
+|---|---|
+| `vet.py` | verdict for a single issue: OCCUPIED / SELF-DEALT / NO-RAIL / VIABLE |
+| `test_vet.py` | offline unit tests — no network, no token needed |
+| `scan.py` | occupancy-aware scan across a whole query |
+| `algora.py` | probe of the Algora tRPC rail |
+| `FINDINGS.md` | the reproducible evidence behind the design |
 
 ## Usage
 
 ```bash
-export GITHUB_TOKEN=ghp_...        # authenticated = 5000 req/hr, not 10
-python3 scan.py                     # default queries
-python3 scan.py 'label:"bounty" state:open type:issue' 'repo:OWNER/REPO "bounty"'
+export GITHUB_TOKEN=ghp_...     # 5000 req/hr instead of 10
+python3 vet.py https://github.com/OWNER/REPO/issues/123
+python3 vet.py --json OWNER/REPO#123
+python3 -m unittest test_vet    # or: python3 test_vet.py
 ```
 
-Stdlib only. No dependencies. Writes `report.json` (machine) and `report.md` (human).
+Stdlib only. No dependencies.
 
-## Scoring
+## What the evidence says
 
-```
-50  base
-+   max_usd capped at $500, /10
-+30  an escrow/rail link exists
--45  per open PR already on it
--40  self-dealt (author == PR author)
--15  bot-authored issue
--10  younger than 2 days (contested)
-+10  older than 30 days (abandoned, probably open)
-```
+Two independent scans over `label:"bounty" state:open type:issue` returned
+**10 candidates, 0 unoccupied, 0 railed** — dominated by self-dealing farms
+where the issue author races their own PR. Algora's rail *is* reachable from a
+restricted host, but its public board is auth-gated. Full write-up in
+[FINDINGS.md](FINDINGS.md).
 
-## Caveats (read these)
-
-* GitHub search is eventually-consistent and rate-limited; the occupancy probe is
-  deliberately limited to the top 25 by amount to stay inside quota.
-* "No rail" is a heuristic, not proof. Some honest maintainers pay by hand.
-* This tool tells you where **not** to spend. That is the point.
-
-## License
-
-MIT
+**Reachable is not the same as payable.** That distinction is the whole point.
