@@ -70,7 +70,7 @@ class TestAssess(unittest.TestCase):
     def test_viable(self):
         r = assess(issue(body="Escrowed on algora.io, $500"), [])
         self.assertEqual(r["verdict"], "VIABLE")
-        self.assertEqual(r["score"], 80.0)
+        self.assertEqual(r["score"], 90.0)  # 50 base + 10 (amount 500) + 30 rail
 
     def test_viable_requires_amount_parse_to_be_useful(self):
         r = assess(issue(body="algora.io payout"), [])
