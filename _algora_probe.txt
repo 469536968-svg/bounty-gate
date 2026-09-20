@@ -1,0 +1,27 @@
+=== Algora API variants (captured 2026-09-20T16:34:12Z) ===
+--- https://algora.io/api/bounties
+{"errors":{"detail":"Not Acceptable"}}
+--- https://algora.io/api/bounties
+{"errors":{"detail":"Not Acceptable"}}
+--- https://algora.io/api/trpc/bounty.list?input=%7B%7D
+[{"result":{"data":{"json":{"items":[],"next_cursor":null}}}}]
+--- https://algora.io/bounties
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found</title>
+    <style>
+      * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+      }
+
+      body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+          background: #000;
+          color: #fff;
+          min-height: 100vh;
+          display: flex
