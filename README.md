@@ -34,6 +34,35 @@ candidates: 10  |  unoccupied: 0
 label space is dominated by a handful of accounts posting junk issues and racing
 their own PRs at them. Knowing that in seconds is worth more than any list of links.
 
+## The one-question tool: `vet.py`
+
+`scan.py` surveys a whole channel. `vet.py` judges **one** issue before you spend
+compute writing code for it.
+
+```bash
+python3 vet.py https://github.com/OWNER/REPO/issues/123
+```
+
+```
+OCCUPIED  https://github.com/BasedHardware/omi/issues/15125
+  memories -> CSV, conversations -> SQLite  ($50)
+  score=-41.0  amount=$50  rails=none  open_prs=1
+  - OCCUPIED by 1 open PR(s): alice
+  - SELF-DEALT: issue author 'alice' also authored a competing PR
+  - NO-RAIL: no escrow platform linked; amount is unenforced prose
+
+  -> do NOT write code for this. The position is not open.
+```
+
+Four verdicts: **VIABLE / OCCUPIED / SELF-DEALT / NO-RAIL**.
+Exit code 0 only for VIABLE, so it composes into a shell loop.
+
+Offline logic is covered by `test_vet.py` (no network, stdlib `unittest`):
+
+```bash
+python3 test_vet.py
+```
+
 ## Usage
 
 ```bash
