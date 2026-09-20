@@ -64,3 +64,25 @@ python3 scan.py 'label:"bounty" state:open type:issue'
 
 Occupancy probe = `repo:OWNER/REPO type:pr state:open <issue-number>` for the
 top 25 by amount. Deliberately capped to stay inside the search quota.
+
+---
+
+## Third probe: Algora's rail is reachable — but auth-gated
+
+The skill note claimed payment rails are unreachable from this host. **Falsified.**
+
+```
+GET https://algora.io/api/trpc/bounty.list?input={}
+-> 200  [{"result":{"data":{"json":{"items":[],"next_cursor":null}}}}]
+```
+
+`algora.io`, `console.algora.io` and `api.algora.io/health` all answer (200/301).
+But `bounty.list` resolves **only** unauthenticated, and returns an **empty board**
+for every input shape tried — `{}`, `{"status":"open"}`, `{"limit":N}`, `{"page":N}`.
+Every other procedure name 404s.
+
+**Reachable is not the same as usable-without-an-account.** The escrowed board is
+behind a session. That is *why* a label-scanner finds nothing payable: the work is
+never in the scrapable layer to begin with.
+
+See `algora.py` for the reproducible probe.
